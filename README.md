@@ -14,6 +14,7 @@
 
 4.下载并解压chrome驱动(https://npm.taobao.org/)
 >`unzip chromedriver_linux64.zip`
+>
 >注意浏览器和驱动的版本应一致
 
 5.把chrome驱动移动到任一环境变量中的目录，如`/usr/local/bin`
