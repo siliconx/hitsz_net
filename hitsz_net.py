@@ -1,134 +1,100 @@
-import re
+#!/usr/bin/python3
+
+# driver download from https://npm.taobao.org/
+
 import time
-import random
-import hashlib
-import requests
-import json
-import base64
-from lxml import etree
-from xencode import xencode
+import getpass
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
-home_url = 'http://10.248.98.2/srun_portal_pc?ac_id=1&theme=basic2'
-challenge_url = 'http://10.248.98.2/cgi-bin/get_challenge'
-login_url = 'http://10.248.98.2/cgi-bin/srun_portal'
+def init():
+    print('running...')
 
-username = '19S051022'
-password = 'XZB7091wifi'
+    home_url = 'http://10.248.98.2/srun_portal_pc?ac_id=1&theme=basic2'
+    chrome_options = Options()
+    # 解决DevToolsActivePort文件不存在的报错
+    chrome_options.add_argument('--no-sandbox')
+    # 指定浏览器分辨率
+    chrome_options.add_argument('window-size=1920x1080')
+    # 谷歌文档提到需要加上这个属性来避免出bug
+    chrome_options.add_argument('--disable-gpu')
+    # 隐藏滚动条, 应对一些特殊页面
+    chrome_options.add_argument('--hide-scrollbars')
+    # 不加载图片, 提升加载速度
+    chrome_options.add_argument('blink-settings=imagesEnabled=false')
+    # 关闭浏览器图形界面, 无GUI的操作系统不加这条会启动失败
+    chrome_options.add_argument('--headless')
+
+    global driver
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.get(home_url)
+    # 等待页面加载
+    time.sleep(1)
+
+    # 获取用户名输入框
+    username_input = driver.find_element_by_id('username')
+    # 获取密码输入框
+    pwd_input = driver.find_element_by_id('password')
+    # 填入用户名和密码
+    username_input.send_keys(username)
+    pwd_input.send_keys(password)
 
 
-class HITSZNet(object):
-    '''HITSZNet.'''
-    def __init__(self):
-        super(HITSZNet, self).__init__()
-        self.ac_id = '1'
-        self.enc = 'srun_bx1'
-        self.n = '200'
-        self.type = '1'
-        self.os = 'Linux'
-        self.name = 'Linux'
-        self.double_stack = '0'
+def login():
+    '''登陆.'''
+    # 登陆按钮
+    button = driver.find_element_by_id('login')
+    button.click()
+    # 等待页面加载
+    time.sleep(1)
 
-    def get_ip(self):
-        '''获取ip地址.'''
-        # 下载页面
-        r = requests.get(home_url)
-        # 解析html
-        html = etree.HTML(r.text)
-        # 定位id为user_ip的<input>标签
-        ip_tag = html.xpath('//input[@id="user_ip"]')
-        if ip_tag:
-            # 提取ip地址
-            ip = ip_tag[0].attrib['value']
-        else:
-            ip = None
+    page = driver.page_source
+    if '帐户余额' in page:
+        msg = 'login success'
+    elif '已经在线了' in page:
+        msg = 'already online'
+    elif '用户不存在' in page:
+        msg = 'user not exist'
+    elif '帐号或密码错误' in page:
+        msg = 'username or password error'
+    else:
+        msg = 'something wrong, try again later'
+    print(msg)
 
-        self.ip = ip
+def logout():
+    '''注销.'''
+    # 注销按钮
+    button = driver.find_element_by_id('logout-dm')
+    button.click()
+    # 等待页面加载
+    time.sleep(1)
 
-    def gen_callback(self):
-        '''生成callback参数.'''
-        # 21位随机数
-        rand_num = '11240'
-        rand_num += ''.join(random.sample('0123456789', 8)) * 2
-        # 时间戳
-        timestamp = '%d' % int(time.time() * 1000)
-        self.callback = 'jQuery' + rand_num + '_' + timestamp
-        self.timestamp = timestamp
-
-    def get_challenge(self):
-        '''获取`challenge`.'''
-        # 参数
-        params = {
-            'callback': self.callback,
-            'username': username,
-            'ip': self.ip,
-            '_': self.timestamp
-        }
-        # 获取响应
-        r = requests.get(challenge_url, params=params)
-        # 正则匹配
-        re_obj = re.search(r'{.*}', r.text)
-        # 提取有效json字符串
-        extract = re_obj.group(0)
-        # 解析json字符串
-        data = json.loads(extract)
-        self.challenge = data.get('challenge')
-
-    def encryption(self):
-        '''加密.'''
-        token = self.challenge
-        md5_obj = hashlib.md5(token.encode('utf-8'))
-        md5_obj.update(password.encode('utf-8'))
-        self.md5_pwd = '{MD5}' + md5_obj.hexdigest()
-
-        data = {
-            'username': username,
-            'password': password,
-            'ip': self.ip,
-            'acid': self.ac_id,
-            'enc_ver': self.enc
-        }
-        json_str = json.dumps(data)
-        xc = xencode.xEncode(json_str, token)
-        self.info = b'{SRBX1}' + base64.b64encode(xc.encode('utf-8'))
-        chkstr = token + username
-        chkstr += token + self.md5_pwd
-        chkstr += token + self.ac_id
-        chkstr += token + self.ip
-        chkstr += token + self.n
-        chkstr += token + self.type
-        chkstr = chkstr.encode('utf-8') + token.encode('utf-8') + self.info
-        self.chksum = hashlib.sha1(chkstr)
-
-    def login(self):
-        '''登陆.'''
-        self.get_ip()
-        self.gen_callback()
-        self.get_challenge()
-        self.encryption()
-
-        params = {
-            'action': 'login',
-            'username': username,
-            'password': self.md5_pwd,
-            'ac_id': self.ac_id,
-            'ip': self.ip,
-            'chksum': self.chksum,
-            'info': self.info,
-            'n': self.n,
-            'type': self.type,
-            'os': self.os,
-            'name': self.name,
-            'double_stack': self.double_stack,
-            '_': self.timestamp
-        }
-
-        r = requests.get(login_url, params=params)
-        self.r = r
-
+    page = driver.page_source
+    if 'DM下线成功' in page:
+        msg = 'logout success'
+    elif '当前设备不在线' in page:
+        msg = 'already offline'
+    elif 'SomeParameterError' in page:
+        msg = 'some parameter error'
+    else:
+        msg = 'something wrong, try again later'
+    print(msg)
 
 if __name__ == '__main__':
+    # 可直接填入账号密码，免输入登陆注销
+    username = ''
+    password = ''
     if not (username and password):
         username = input('Enter username: ')
-        password = input('Enter password: ')
-    hit = HITSZNet()
-    hit.login()
+        password = getpass.getpass('Enter password: ')
+        password = str(password)
+        print(password)
+
+    init()
+    action = input('1-login\n2-logout\n')
+    if action == '1':
+        login()
+    else:
+        logout()
+
+driver.close()
