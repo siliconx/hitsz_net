@@ -87,8 +87,6 @@ if __name__ == '__main__':
     if not (username and password):
         username = input('Enter username: ')
         password = getpass.getpass('Enter password: ')
-        password = str(password)
-        print(password)
 
     init()
     action = input('1-login\n2-logout\n')
