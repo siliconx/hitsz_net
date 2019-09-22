@@ -20,7 +20,7 @@
 5.把chrome驱动移动到任一环境变量中的目录，如`/usr/local/bin`
 >`sudo mv chromedriver /usr/local/bin`
 
-6.给hitsz_net.py加写权限
+6.给hitsz_net.py加可执行权限
 >`chmod +x hitsz_net.py`
 
 7.把hitsz_net.py移动到任一环境变量中的目录，如`/usr/local/bin`
