@@ -7,11 +7,13 @@ import getpass
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
+home_url = 'http://10.248.98.2/srun_portal_pc?ac_id=1&theme=basic2'
+
 def init():
     print('running...')
 
-    home_url = 'http://10.248.98.2/srun_portal_pc?ac_id=1&theme=basic2'
     chrome_options = Options()
+
     # 解决DevToolsActivePort文件不存在的报错
     chrome_options.add_argument('--no-sandbox')
     # 指定浏览器分辨率
@@ -28,6 +30,7 @@ def init():
     global driver
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(home_url)
+
     # 等待页面加载
     time.sleep(1)
 
@@ -96,3 +99,4 @@ if __name__ == '__main__':
         logout()
 
 driver.close()
+
